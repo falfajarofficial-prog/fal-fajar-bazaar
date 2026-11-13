@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set seller password</title>
+</head>
+<body style="font-family:sans-serif;padding:20px;max-width:400px;margin:auto">
+<h2>Set seller password</h2>
+<input id="adminpw" type="password" placeholder="Admin password" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px">
+<input id="sid" placeholder="Seller ID (e.g. ahmad)" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px">
+<input id="newpw" type="password" placeholder="New seller password (8+ chars)" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px">
+<button id="go" style="padding:10px 20px;font-size:16px">Save</button>
+<p id="out"></p>
+<script>
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out');
+  out.textContent = '...';
+  try {
+    const l = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: document.getElementById('adminpw').value })
+    });
+    const ld = await l.json();
+    if (!l.ok) throw new Error('Admin login failed');
+
+    const r = await fetch('/api/admin-seller-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ld.token },
+      body: JSON.stringify({
+        seller_id: document.getElementById('sid').value.trim(),
+        password: document.getElementById('newpw').value
+      })
+    });
+    const d = await r.json();
+    out.textContent = r.ok ? 'Saved for seller: ' + d.seller_id : 'Failed: ' + (d.error || r.status);
+  } catch (e) {
+    out.textContent = 'Error: ' + e.message;
+  }
+};
+</script>
+</body>
+  </html>
