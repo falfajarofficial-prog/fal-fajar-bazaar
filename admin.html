@@ -3,29 +3,141 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin login</title>
+<title>Admin</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:8px 12px;font-size:14px;margin:4px 4px 0 0;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+button.ok{background:#15803d}button.no{background:#b91c1c}button.gray{background:#6b7280}
+.row{border-bottom:1px solid #e5e7eb;padding:10px 0}
+.st{font-size:12px;padding:2px 6px;border-radius:4px;background:#e5e7eb}
+#msg{font-size:14px;margin:8px 0}
+</style>
 </head>
-<body style="font-family:sans-serif;padding:20px;max-width:400px;margin:auto">
-<h2>Admin login</h2>
-<input id="pw" type="password" placeholder="Password" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box">
-<button id="go" style="margin-top:10px;padding:10px 20px;font-size:16px">Login</button>
-<p id="out"></p>
+<body>
+<h2>Admin</h2>
+
+<div id="login" class="box">
+  <input id="pw" type="password" placeholder="Password">
+  <button id="go">Login</button>
+  <div id="msg2"></div>
+</div>
+
+<div id="panel" style="display:none">
+  <div class="box">
+    <button id="reload" class="gray">Reload</button>
+    <button id="logout" class="gray">Logout</button>
+    <div id="msg"></div>
+  </div>
+  <div id="list" class="box"></div>
+</div>
+
 <script>
-document.getElementById('go').onclick = async () => {
-  const out = document.getElementById('out');
-  out.textContent = '...';
+const $ = id => document.getElementById(id);
+const SK = 'ffb_admin_token';
+let token = sessionStorage.getItem(SK) || '';
+
+function showLogin(text) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('msg2').textContent = text || '';
+}
+
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  loadList();
+}
+
+async function api(path, opts = {}) {
+  opts.headers = Object.assign(
+    { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    opts.headers || {}
+  );
+  const r = await fetch(path, opts);
+  if (r.status === 401) {
+    token = '';
+    sessionStorage.removeItem(SK);
+    showLogin('Session expired. Login again.');
+    throw new Error('401');
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.status);
+  return d;
+}
+
+$('go').onclick = async () => {
+  $('msg2').textContent = '...';
   try {
     const r = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: document.getElementById('pw').value })
+      body: JSON.stringify({ password: $('pw').value })
     });
     const d = await r.json();
-    out.textContent = r.ok ? 'Login OK. Token received.' : 'Failed: ' + (d.error || r.status);
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
   } catch (e) {
-    out.textContent = 'Error: ' + e.message;
+    $('msg2').textContent = 'Failed: ' + e.message;
   }
 };
+
+$('logout').onclick = () => {
+  token = '';
+  sessionStorage.removeItem(SK);
+  showLogin('Logged out.');
+};
+
+$('reload').onclick = () => loadList();
+
+async function setStatus(id, status) {
+  $('msg').textContent = 'Saving...';
+  try {
+    await api('/api/admin-products', { method: 'POST', body: JSON.stringify({ id, status }) });
+    $('msg').textContent = 'Saved.';
+    loadList();
+  } catch (e) {
+    if (e.message !== '401') $('msg').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function loadList() {
+  $('list').textContent = 'Loading...';
+  try {
+    const items = await api('/api/admin-products');
+    if (!items.length) { $('list').textContent = 'No products.'; return; }
+    $('list').innerHTML = '';
+    items.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const title = document.createElement('b');
+      title.textContent = p.title;
+      const info = document.createElement('div');
+      info.textContent = p.seller_name + ' · ' + p.price_afn + ' AFN';
+      const st = document.createElement('span');
+      st.className = 'st';
+      st.textContent = p.status;
+      const btns = document.createElement('div');
+      [['approved', 'Approve', 'ok'], ['rejected', 'Reject', 'no'], ['hidden', 'Hide', 'gray']].forEach(([s, label, cls]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.className = cls;
+        b.onclick = () => setStatus(p.id, s);
+        btns.appendChild(b);
+      });
+      row.append(title, info, st, btns);
+      $('list').appendChild(row);
+    });
+  } catch (e) {
+    if (e.message !== '401') $('list').textContent = 'Error: ' + e.message;
+  }
+}
+
+if (token) showPanel(); else showLogin('');
 </script>
 </body>
-                                                                                </html>
+  </html>
