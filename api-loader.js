@@ -20,9 +20,10 @@
           s: p.seller_name, c: p.seller_city, type: 'Registered Shop',
           st: true, act: true, d: 20260901
         });
-        // ڈیٹابیس میں منظور شدہ سیلر کو عوامی صفحے پر بھی منظور دکھائیں
-        const demo = DEMO_SELLERS.find(d => d.name === p.seller_name);
-        if (demo && typeof A !== 'undefined' && A.ss) A.ss[demo.key] = 'approved';
+        try {
+          const demo = DEMO_SELLERS.find(d => d.name === p.seller_name);
+          if (demo && A.ss) A.ss[demo.key] = 'approved';
+        } catch (e) { /* سیلر کی حالت نہ بدلے تو بھی باقی صفحہ چلے */ }
       });
     }
     route();
