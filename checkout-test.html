@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkout test</title>
+</head>
+<body style="font-family:sans-serif;padding:16px;max-width:420px;margin:auto">
+<h2>Checkout test</h2>
+<input id="pid" placeholder="Product ID (e.g. p1)" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="qty" type="number" value="1" min="1" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="name" placeholder="Customer name" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="phone" placeholder="Phone" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="city" placeholder="City" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="address" placeholder="Address" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<button id="go" style="padding:10px 20px;font-size:16px">Place order</button>
+<p id="out"></p>
+<script>
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out');
+  out.textContent = '...';
+  const r = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items: [{ id: document.getElementById('pid').value.trim(), qty: Number(document.getElementById('qty').value) }],
+      name: document.getElementById('name').value,
+      phone: document.getElementById('phone').value,
+      city: document.getElementById('city').value,
+      address: document.getElementById('address').value
+    })
+  });
+  const d = await r.json();
+  out.textContent = r.ok ? 'Order placed: ' + d.order_id + ' (' + d.total_afn + ' AFN)' : 'Failed: ' + d.error;
+};
+</script>
+</body>
+</html>
