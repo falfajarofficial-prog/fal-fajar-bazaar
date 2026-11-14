@@ -76,3 +76,16 @@ window.ckPlace = async function () {
     m.addedNodes.forEach(n => { if (n.nodeType === 1) fixFee(n); })
   )).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const css = document.createElement('style');
+  css.textContent = '#lang,#lang-m,#st-lang{display:none!important}';
+  document.head.appendChild(css);
+
+  const forceEnglish = () => {
+    try {
+      if (typeof setLang === 'function') setLang('en');
+      localStorage.setItem('ffb_lang', 'en');
+    } catch (e) {}
+  };
+  forceEnglish();
+})();
