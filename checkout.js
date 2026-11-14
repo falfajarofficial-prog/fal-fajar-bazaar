@@ -32,3 +32,31 @@ window.ckPlace = async function () {
     alert('Error: ' + e.message);
   }
 };
+(() => {
+  const map = [
+    [/Demo order created/g, 'Order placed'],
+    [/This is a demo\.[^]*?made\./g, 'Thank you. Your order has been received. Keep your order number to track it.'],
+    [/Demo reference/g, 'Order number'],
+    [/Place demo order/g, 'Place order'],
+    [/Payment method \(demo only\)/g, 'Payment method'],
+    [/Delivery fee \(estimated, sample\)/g, 'Delivery fee']
+  ];
+
+  const fix = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      const v0 = n.nodeValue;
+      if (!v0 || !/demo|This is a/i.test(v0)) return;
+      let v = v0;
+      map.forEach(([re, to]) => { v = v.replace(re, to); });
+      if (v !== v0) n.nodeValue = v;
+    });
+  };
+  
+  fix(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
