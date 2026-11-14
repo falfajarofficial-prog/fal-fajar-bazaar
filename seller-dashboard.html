@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller dashboard</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937;max-width:520px;margin:auto}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input,select{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:10px 16px;font-size:15px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer;margin-top:4px}
+button.gray{background:#6b7280}
+.row{border-bottom:1px solid #e5e7eb;padding:8px 0}
+.st{font-size:12px;padding:2px 6px;border-radius:4px;background:#e5e7eb}
+h3{margin:6px 0 10px}
+</style>
+</head>
+<body>
+<h2>Seller dashboard</h2>
+
+<div id="login" class="box" style="display:none">
+  <input id="sid" placeholder="Seller ID (e.g. ahmad)">
+  <input id="pw" type="password" placeholder="Seller password">
+  <button id="go">Login</button>
+  <p id="lmsg"></p>
+</div>
+
+<div id="panel" style="display:none">
+  <div class="box">
+    <button id="logout" class="gray">Logout</button>
+  </div>
+
+  <div class="box">
+    <h3>My orders</h3>
+    <div id="orders">Loading...</div>
+  </div>
+
+  <div class="box">
+    <h3>My products</h3>
+    <div id="products">Loading...</div>
+  </div>
+
+  <div class="box">
+    <h3>Add product</h3>
+    <input id="title" placeholder="Product name">
+    <select id="cat">
+      <option value="fashion">Fashion &amp; Clothing</option>
+      <option value="electronics">Electronics</option>
+      <option value="agriculture">Agriculture</option>
+      <option value="home">Home &amp; Kitchen</option>
+      <option value="food">Food &amp; Grocery</option>
+      <option value="health">Health &amp; Personal Care</option>
+      <option value="books">Books &amp; Education</option>
+      <option value="tools">Tools &amp; Equipment</option>
+      <option value="handicrafts">Afghan Handicrafts</option>
+    </select>
+    <input id="price" type="number" placeholder="Price (AFN)">
+    <input id="stock" type="number" placeholder="Stock">
+    <input id="brand" placeholder="Brand (optional)">
+    <input id="model" placeholder="Model (optional)">
+    <input id="weight" placeholder="Weight (optional)">
+    <select id="cond">
+      <option value="New">New</option>
+      <option value="Used">Used</option>
+    </select>
+    <button id="add">Submit for approval</button>
+    <p id="amsg"></p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SK = 'ffb_seller_token';
+let token = sessionStorage.getItem(SK) || '';
+
+const STATUS_TEXT = { pending: 'Waiting for approval', approved: 'Live', rejected: 'Rejected', hidden: 'Hidden', removed: 'Removed' };
+
+function showLogin(m) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('lmsg').textContent = m || '';
+}
+
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  loadAll();
+}
+
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({ 'Authorization': 'Bearer ' + token }, opts.headers || {});
+  if (opts.body) opts.headers['Content-Type'] = 'application/json';
+  const r = await fetch(path, opts);
+  if (r.status === 401) {
+    token = '';
+    sessionStorage.removeItem(SK);
+    showLogin('Session expired. Login again.');
+    throw new Error('401');
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.status);
+  return d;
+}
+
+$('go').onclick = async () => {
+  $('lmsg').textContent = '...';
+  try {
+    const r = await fetch('/api/seller-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seller_id: $('sid').value.trim(), password: $('pw').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
+  } catch (e) {
+    $('lmsg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+$('logout').onclick = () => {
+  token = '';
+  sessionStorage.removeItem(SK);
+  showLogin('Logged out.');
+};
+
+async function loadAll() {
+  loadOrders();
+  loadProducts();
+}
+
+async function loadOrders() {
+  $('orders').textContent = 'Loading...';
+  try {
+    const rows = await api('/api/seller-orders');
+    if (!rows.length) { $('orders').textContent = 'No orders yet.'; return; }
+    $('orders').innerHTML = '';
+    rows.forEach(o => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const t = document.createElement('b');
+      t.textContent = o.title + ' × ' + o.qty;
+      const i = document.createElement('div');
+      i.textContent = o.order_id + ' · ' + (o.price_afn * o.qty) + ' AFN · ' + o.city;
+      const s = document.createElement('span');
+      s.className = 'st';
+      s.textContent = STATUS_TEXT[o.status] || o.status;
+      row.append(t, i, s);
+      $('orders').appendChild(row);
+    });
+  } catch (e) {
+    if (e.message !== '401') $('orders').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function loadProducts() {
+  $('products').textContent = 'Loading...';
+  try {
+    const items = await api('/api/seller-products');
+    if (!items.length) { $('products').textContent = 'No products yet.'; return; }
+    $('products').innerHTML = '';
+    items.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const t = document.createElement('b');
+      t.textContent = p.title;
+      const i = document.createElement('div');
+      i.textContent = p.price_afn + ' AFN · stock ' + p.stock;
+      const s = document.createElement('span');
+      s.className = 'st';
+      s.textContent = STATUS_TEXT[p.status] || p.status;
+      row.append(t, i, s);
+      $('products').appendChild(row);
+    });
+  } catch (e) {
+    if (e.message !== '401') $('products').textContent = 'Error: ' + e.message;
+  }
+}
+
+$('add').onclick = async () => {
+  $('amsg').textContent = 'Saving...';
+  try {
+    await api('/api/seller-products', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: $('title').value.trim(),
+        category_id: $('cat').value,
+        price_afn: Number($('price').value),
+        stock: Number($('stock').value || 0),
+        brand: $('brand').value.trim(),
+        model: $('model').value.trim(),
+        weight: $('weight').value.trim(),
+        condition: $('cond').value
+      })
+    });
+    $('amsg').textContent = 'Submitted. Waiting for admin approval.';
+    ['title','price','stock','brand','model','weight'].forEach(i => $(i).value = '');
+    loadProducts();
+  } catch (e) {
+    if (e.message !== '401') $('amsg').textContent = 'Error: ' + e.message;
+  }
+};
+
+if (token) showPanel(); else showLogin('');
+</script>
+</body>
+</html>
