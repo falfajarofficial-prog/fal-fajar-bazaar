@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller products</title>
+<style>
+body{font-family:sans-serif;padding:16px;max-width:460px;margin:auto;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input,select{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:10px 16px;font-size:15px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+.row{border-bottom:1px solid #e5e7eb;padding:8px 0}
+.st{font-size:12px;padding:2px 6px;border-radius:4px;background:#e5e7eb}
+</style>
+</head>
+<body>
+<h2>Seller products</h2>
+
+<div id="login" class="box">
+  <input id="sid" placeholder="Seller ID">
+  <input id="pw" type="password" placeholder="Seller password">
+  <button id="go">Login</button>
+  <p id="lmsg"></p>
+</div>
+
+<div id="panel" style="display:none">
+  <div class="box">
+    <h3>Add product</h3>
+    <input id="title" placeholder="Product name">
+    <select id="cat">
+      <option value="fashion">Fashion &amp; Clothing</option>
+      <option value="electronics">Electronics</option>
+      <option value="agriculture">Agriculture</option>
+      <option value="home">Home &amp; Kitchen</option>
+      <option value="food">Food &amp; Grocery</option>
+      <option value="health">Health &amp; Personal Care</option>
+      <option value="books">Books &amp; Education</option>
+      <option value="tools">Tools &amp; Equipment</option>
+      <option value="handicrafts">Afghan Handicrafts</option>
+    </select>
+    <input id="price" type="number" placeholder="Price (AFN)">
+    <input id="stock" type="number" placeholder="Stock">
+    <input id="brand" placeholder="Brand (optional)">
+    <input id="model" placeholder="Model (optional)">
+    <input id="weight" placeholder="Weight (optional)">
+    <select id="cond">
+      <option value="New">New</option>
+      <option value="Used">Used</option>
+    </select>
+    <button id="add">Submit for approval</button>
+    <p id="amsg"></p>
+  </div>
+
+  <div class="box">
+    <button id="reload">Reload</button>
+    <button id="logout" style="background:#6b7280">Logout</button>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SK = 'ffb_seller_token';
+let token = sessionStorage.getItem(SK) || '';
+
+function showLogin(msg) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('lmsg').textContent = msg || '';
+}
+
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  loadList();
+}
+
+async function api(method, body) {
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + token } };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch('/api/seller-products', opts);
+  if (r.status === 401) {
+    token = '';
+    sessionStorage.removeItem(SK);
+    showLogin('Session expired. Login again.');
+    throw new Error('401');
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.status);
+  return d;
+}
+
+$('go').onclick = async () => {
+  $('lmsg').textContent = '...';
+  try {
+    const r = await fetch('/api/seller-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seller_id: $('sid').value.trim(), password: $('pw').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
+  } catch (e) {
+    $('lmsg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+$('logout').onclick = () => {
+  token = '';
+  sessionStorage.removeItem(SK);
+  showLogin('Logged out.');
+};
+
+$('reload').onclick = () => loadList();
+
+$('add').onclick = async () => {
+  $('amsg').textContent = 'Saving...';
+  try {
+    await api('POST', {
+      title: $('title').value.trim(),
+      category_id: $('cat').value,
+      price_afn: Number($('price').value),
+      stock: Number($('stock').value || 0),
+      brand: $('brand').value.trim(),
+      model: $('model').value.trim(),
+      weight: $('weight').value.trim(),
+      condition: $('cond').value
+    });
+    $('amsg').textContent = 'Submitted. Waiting for admin approval.';
+    ['title','price','stock','brand','model','weight'].forEach(i => $(i).value = '');
+    loadList();
+  } catch (e) {
+    if (e.message !== '401') $('amsg').textContent = 'Error: ' + e.message;
+  }
+};
+
+async function loadList() {
+  $('list').textContent = 'Loading...';
+  try {
+    const items = await api('GET');
+    if (!items.length) { $('list').textContent = 'No products yet.'; return; }
+    $('list').innerHTML = '';
+    items.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const t = document.createElement('b');
+      t.textContent = p.title;
+      const i = document.createElement('div');
+      i.textContent = p.price_afn + ' AFN · stock ' + p.stock;
+      const s = document.createElement('span');
+      s.className = 'st';
+      s.textContent = p.status;
+      row.append(t, i, s);
+      $('list').appendChild(row);
+    });
+  } catch (e) {
+    if (e.message !== '401') $('list').textContent = 'Error: ' + e.message;
+  }
+}
+
+if (token) showPanel(); else showLogin('');
+</script>
+</body>
+    </html>
