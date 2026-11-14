@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller passwords</title>
+<style>
+body{font-family:sans-serif;padding:16px;max-width:460px;margin:auto;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input,select{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:10px 16px;font-size:15px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+button.gray{background:#6b7280}
+</style>
+</head>
+<body>
+<h2>Seller passwords</h2>
+
+<div id="login" class="box" style="display:none">
+  <input id="pw" type="password" placeholder="Admin password">
+  <button id="go">Login</button>
+  <p id="lmsg"></p>
+</div>
+
+<div id="panel" class="box" style="display:none">
+  <select id="sid">
+    <option value="ahmad">ahmad (Ahmad Khan)</option>
+    <option value="kabul-crafts">kabul-crafts (Kabul Crafts Co.)</option>
+    <option value="herat-saffron">herat-saffron (Herat Saffron House)</option>
+    <option value="kandahar-trading">kandahar-trading (Kandahar Trading House)</option>
+    <option value="mazar-artisans">mazar-artisans (Mazar Artisans)</option>
+    <option value="nangarhar-trading">nangarhar-trading (Nangarhar Trading Co.)</option>
+    <option value="ghazni-farm">ghazni-farm (Ghazni Farm Supply)</option>
+  </select>
+  <input id="newpw" type="password" placeholder="New seller password (8+ characters)">
+  <button id="save">Set password</button>
+  <button id="logout" class="gray">Logout</button>
+  <p id="msg"></p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SK = 'ffb_admin_token';
+let token = sessionStorage.getItem(SK) || '';
+
+function showLogin(m) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('lmsg').textContent = m || '';
+}
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+}
+
+$('go').onclick = async () => {
+  $('lmsg').textContent = '...';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: $('pw').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
+  } catch (e) {
+    $('lmsg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+$('logout').onclick = () => {
+  token = '';
+  sessionStorage.removeItem(SK);
+  showLogin('Logged out.');
+};
+
+$('save').onclick = async () => {
+  $('msg').textContent = 'Saving...';
+  try {
+    const r = await fetch('/api/admin-seller-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ seller_id: $('sid').value, password: $('newpw').value })
+    });
+    if (r.status === 401) {
+      token = '';
+      sessionStorage.removeItem(SK);
+      showLogin('Session expired. Login again.');
+      return;
+    }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    $('newpw').value = '';
+    $('msg').textContent = 'Password set for: ' + d.seller_id;
+  } catch (e) {
+    $('msg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+if (token) showPanel(); else showLogin('');
+</script>
+</body>
+</html>
