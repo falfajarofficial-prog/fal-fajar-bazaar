@@ -1,3 +1,5 @@
+const DELIVERY_FEE = 150;
+
 const fail = (msg, status = 400) => Response.json({ error: msg }, { status });
 
 export async function onRequestPost({ request, env }) {
@@ -34,7 +36,8 @@ export async function onRequestPost({ request, env }) {
     return fail('Same product listed twice');
   }
 
-  const total = lines.reduce((s, l) => s + l.p.price_afn * l.qty, 0);
+  const subtotal = lines.reduce((s, l) => s + l.p.price_afn * l.qty, 0);
+  const total = subtotal + DELIVERY_FEE;
   const orderId = 'FFB-' + Date.now().toString(36).toUpperCase() + '-' +
     Math.random().toString(36).slice(2, 6).toUpperCase();
 
