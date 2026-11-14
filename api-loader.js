@@ -50,4 +50,34 @@
   new MutationObserver(ms => ms.forEach(m =>
     m.addedNodes.forEach(n => { if (n.nodeType === 1) clean(n); })
   )).observe(document.body, { childList: true, subtree: true });
+})();(() => {
+  const st = document.createElement('style');
+  st.textContent = '.sample{display:none!important}';
+  document.head.appendChild(st);
+
+  const hideSampleTags = root => {
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('.tag').forEach(el => {
+      if (/sample/i.test(el.textContent)) el.style.display = 'none';
+    });
+  };
+
+  const cleanText = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      if (!n.nodeValue || !/sample/i.test(n.nodeValue)) return;
+      n.nodeValue = n.nodeValue
+        .replace(/\s*·?\s*sample count/gi, '')
+        .replace(/\s*·?\s*sample data/gi, '')
+        .replace(/\s*\(sample\)/gi, '');
+    });
+  };
+
+  const run = root => { hideSampleTags(root); cleanText(root); };
+  run(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) run(n); })
+  )).observe(document.body, { childList: true, subtree: true });
 })();
