@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Become a seller</title>
+</head>
+<body style="font-family:sans-serif;padding:16px;max-width:460px;margin:auto;background:#f5f7fa">
+<h2>Become a seller</h2>
+<p>Tell us about your business. We will contact you after review.</p>
+<input id="name" placeholder="Full name" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="phone" placeholder="Phone number" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="email" placeholder="Email (optional)" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<input id="city" placeholder="City" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+<select id="btype" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box">
+  <option value="Individual">Individual</option>
+  <option value="Registered Shop">Registered shop</option>
+  <option value="Company">Company</option>
+</select>
+<textarea id="message" placeholder="What do you sell?" style="width:100%;padding:10px;margin-bottom:8px;box-sizing:border-box;height:90px"></textarea>
+<button id="go" style="padding:10px 20px;font-size:16px">Submit application</button>
+<p id="out"></p>
+<script>
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out');
+  out.textContent = '...';
+  const r = await fetch('/api/seller-apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      full_name: document.getElementById('name').value,
+      phone: document.getElementById('phone').value,
+      email: document.getElementById('email').value,
+      city: document.getElementById('city').value,
+      business_type: document.getElementById('btype').value,
+      message: document.getElementById('message').value
+    })
+  });
+  const d = await r.json();
+  out.textContent = r.ok ? 'Thank you. Your application has been received.' : 'Failed: ' + (d.error || r.status);
+};
+</script>
+</body>
+</html>
