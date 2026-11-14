@@ -9,7 +9,9 @@ body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f29
 .box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
 button{padding:8px 12px;font-size:14px;margin:4px 4px 0 0;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
-button.gray{background:#6b7280}
+button.ok{background:#15803d}button.no{background:#b91c1c}button.gray{background:#6b7280}
+.st{font-size:12px;padding:2px 6px;border-radius:4px;background:#e5e7eb}
+.msg{font-size:14px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -45,6 +47,10 @@ function showPanel() {
   loadList();
 }
 
+function slugOf(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+}
+
 $('go').onclick = async () => {
   $('lmsg').textContent = '...';
   try {
@@ -67,6 +73,22 @@ $('go').onclick = async () => {
 $('logout').onclick = () => { token = ''; sessionStorage.removeItem(SK); showLogin('Logged out.'); };
 $('reload').onclick = () => loadList();
 
+async function send(body) {
+  const r = await fetch('/api/admin-applications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body)
+  });
+  if (r.status === 401) {
+    token = ''; sessionStorage.removeItem(SK);
+    showLogin('Session expired. Login again.');
+    throw new Error('401');
+  }
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || r.status);
+  return d;
+}
+
 async function loadList() {
   $('list').textContent = 'Loading...';
   try {
@@ -84,13 +106,56 @@ async function loadList() {
     rows.forEach(a => {
       const box = document.createElement('div');
       box.className = 'box';
+
       const t = document.createElement('b');
-      t.textContent = a.full_name + ' · ' + a.status;
+      t.textContent = a.full_name;
+      const st = document.createElement('span');
+      st.className = 'st';
+      st.textContent = a.status;
+
       const info = document.createElement('div');
       info.textContent = a.phone + ' · ' + a.city + ' · ' + a.business_type + (a.email ? ' · ' + a.email : '');
       const msg = document.createElement('div');
       msg.textContent = a.message || '';
-      box.append(t, info, msg);
+      box.append(t, ' ', st, info, msg);
+
+      if (a.status === 'pending') {
+        const sid = document.createElement('input');
+        sid.placeholder = 'Seller ID (lowercase, e.g. zaib)';
+        sid.value = slugOf(a.full_name);
+        const pw = document.createElement('input');
+        pw.type = 'password';
+        pw.placeholder = 'Set seller password (8+ characters)';
+        const out = document.createElement('div');
+        out.className = 'msg';
+
+        const ok = document.createElement('button');
+        ok.className = 'ok';
+        ok.textContent = 'Approve';
+        ok.onclick = async () => {
+          out.textContent = 'Saving...';
+          try {
+            await send({ id: a.id, action: 'approve', seller_id: sid.value.trim(), password: pw.value });
+            out.textContent = 'Approved. Seller ID: ' + sid.value.trim();
+            pw.value = '';
+            loadList();
+          } catch (e) { if (e.message !== '401') out.textContent = 'Error: ' + e.message; }
+        };
+
+        const no = document.createElement('button');
+        no.className = 'no';
+        no.textContent = 'Reject';
+        no.onclick = async () => {
+          out.textContent = 'Saving...';
+          try {
+            await send({ id: a.id, action: 'reject' });
+            loadList();
+          } catch (e) { if (e.message !== '401') out.textContent = 'Error: ' + e.message; }
+        };
+
+        box.append(sid, pw, ok, no, out);
+      }
+
       $('list').appendChild(box);
     });
   } catch (e) {
