@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller applications</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:8px 12px;font-size:14px;margin:4px 4px 0 0;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+button.gray{background:#6b7280}
+</style>
+</head>
+<body>
+<h2>Seller applications</h2>
+
+<div id="login" class="box" style="display:none">
+  <input id="pw" type="password" placeholder="Admin password">
+  <button id="go">Login</button>
+  <div id="lmsg"></div>
+</div>
+
+<div id="panel" style="display:none">
+  <div class="box">
+    <button id="reload">Reload</button>
+    <button id="logout" class="gray">Logout</button>
+  </div>
+  <div id="list"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SK = 'ffb_admin_token';
+let token = sessionStorage.getItem(SK) || '';
+
+function showLogin(m) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('lmsg').textContent = m || '';
+}
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  loadList();
+}
+
+$('go').onclick = async () => {
+  $('lmsg').textContent = '...';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: $('pw').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
+  } catch (e) {
+    $('lmsg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+$('logout').onclick = () => { token = ''; sessionStorage.removeItem(SK); showLogin('Logged out.'); };
+$('reload').onclick = () => loadList();
+
+async function loadList() {
+  $('list').textContent = 'Loading...';
+  try {
+    const r = await fetch('/api/admin-applications', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (r.status === 401) {
+      token = ''; sessionStorage.removeItem(SK);
+      showLogin('Session expired. Login again.');
+      return;
+    }
+    const rows = await r.json();
+    if (!rows.length) { $('list').textContent = 'No applications yet.'; return; }
+    $('list').innerHTML = '';
+    rows.forEach(a => {
+      const box = document.createElement('div');
+      box.className = 'box';
+      const t = document.createElement('b');
+      t.textContent = a.full_name + ' · ' + a.status;
+      const info = document.createElement('div');
+      info.textContent = a.phone + ' · ' + a.city + ' · ' + a.business_type + (a.email ? ' · ' + a.email : '');
+      const msg = document.createElement('div');
+      msg.textContent = a.message || '';
+      box.append(t, info, msg);
+      $('list').appendChild(box);
+    });
+  } catch (e) {
+    $('list').textContent = 'Error: ' + e.message;
+  }
+}
+
+if (token) showPanel(); else showLogin('');
+</script>
+</body>
+</html>
