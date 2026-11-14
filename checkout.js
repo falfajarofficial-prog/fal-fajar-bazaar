@@ -60,3 +60,19 @@ window.ckPlace = async function () {
     m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
   )).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const fixFee = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      if (n.nodeValue && n.nodeValue.indexOf('Delivery fee (estimated, sample)') !== -1) {
+        n.nodeValue = n.nodeValue.replace('Delivery fee (estimated, sample)', 'Delivery fee');
+      }
+    });
+  };
+  fixFee(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) fixFee(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
