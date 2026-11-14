@@ -13,18 +13,15 @@
     if (prods.length) {
       PRODS.length = 0;
       A.ps = {};
-      A.ss = {};
       prods.forEach(p => {
         const a = JSON.parse(p.attributes || '{}');
         PRODS.push({
           id: p.id, t: p.title, cat: p.category_id, img: imgId(p.image_url),
           p: p.price_afn, r: a.rating || 0, rc: a.reviews || 0,
           s: p.seller_name, c: p.seller_city, type: 'Registered Shop',
-          st: p.stock > 0, act: true, d: 20260901
+          st: p.stock > 0, act: true, own: 'api', d: 20260901
         });
         A.ps[p.id] = p.status;
-        const demo = DEMO_SELLERS.find(d => d.name === p.seller_name);
-        if (demo) A.ss[demo.key] = 'approved';
       });
     }
     route();
