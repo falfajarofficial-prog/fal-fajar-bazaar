@@ -89,3 +89,13 @@ window.ckPlace = async function () {
   };
   forceEnglish();
 })();
+(() => {
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a');
+    if (a && a.textContent.trim() === 'Become a Seller') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      location.href = '/become-seller.html';
+    }
+  }, true);
+})();
