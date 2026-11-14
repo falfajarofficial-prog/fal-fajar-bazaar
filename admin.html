@@ -7,7 +7,8 @@
 <style>
 body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937}
 .box{background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+input{padding:8px;font-size:16px;box-sizing:border-box}
+#pw{width:100%;margin-bottom:8px}
 button{padding:8px 12px;font-size:14px;margin:4px 4px 0 0;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
 button.ok{background:#15803d}button.no{background:#b91c1c}button.gray{background:#6b7280}
 .row{border-bottom:1px solid #e5e7eb;padding:10px 0}
@@ -94,10 +95,10 @@ $('logout').onclick = () => {
 
 $('reload').onclick = () => loadList();
 
-async function setStatus(id, status) {
+async function update(body) {
   $('msg').textContent = 'Saving...';
   try {
-    await api('/api/admin-products', { method: 'POST', body: JSON.stringify({ id, status }) });
+    await api('/api/admin-products', { method: 'POST', body: JSON.stringify(body) });
     $('msg').textContent = 'Saved.';
     loadList();
   } catch (e) {
@@ -114,22 +115,41 @@ async function loadList() {
     items.forEach(p => {
       const row = document.createElement('div');
       row.className = 'row';
+
       const title = document.createElement('b');
       title.textContent = p.title;
+
       const info = document.createElement('div');
       info.textContent = p.seller_name + ' · ' + p.price_afn + ' AFN';
+
       const st = document.createElement('span');
       st.className = 'st';
       st.textContent = p.status;
+
       const btns = document.createElement('div');
       [['approved', 'Approve', 'ok'], ['rejected', 'Reject', 'no'], ['hidden', 'Hide', 'gray']].forEach(([s, label, cls]) => {
         const b = document.createElement('button');
         b.textContent = label;
         b.className = cls;
-        b.onclick = () => setStatus(p.id, s);
+        b.onclick = () => update({ id: p.id, status: s });
         btns.appendChild(b);
       });
-      row.append(title, info, st, btns);
+
+      const stockRow = document.createElement('div');
+      stockRow.style.marginTop = '8px';
+      const lbl = document.createElement('span');
+      lbl.textContent = 'Stock: ';
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.min = '0';
+      inp.value = p.stock;
+      inp.style.width = '90px';
+      const sb = document.createElement('button');
+      sb.textContent = 'Save stock';
+      sb.onclick = () => update({ id: p.id, stock: Number(inp.value) });
+      stockRow.append(lbl, inp, sb);
+
+      row.append(title, info, st, btns, stockRow);
       $('list').appendChild(row);
     });
   } catch (e) {
@@ -140,4 +160,4 @@ async function loadList() {
 if (token) showPanel(); else showLogin('');
 </script>
 </body>
-  </html>
+</html>
