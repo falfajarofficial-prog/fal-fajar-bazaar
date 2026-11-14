@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Track your order</title>
+<style>
+body{font-family:sans-serif;padding:16px;max-width:460px;margin:auto;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:10px 16px;font-size:15px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+.st{display:inline-block;font-size:14px;padding:4px 10px;border-radius:6px;background:#e5e7eb;margin:6px 0}
+.items{font-size:14px;color:#4b5563}
+</style>
+</head>
+<body>
+<h2>Track your order</h2>
+<div class="box">
+  <input id="oid" placeholder="Order number (e.g. FFB-XXXX-XXXX)">
+  <input id="phone" placeholder="Phone number used for the order">
+  <button id="go">Check status</button>
+  <div id="out"></div>
+</div>
+
+<script>
+const LABEL = {
+  pending: 'Order received',
+  processing: 'Being prepared',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled'
+};
+
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out');
+  out.textContent = '...';
+  const q = new URLSearchParams({
+    id: document.getElementById('oid').value.trim(),
+    phone: document.getElementById('phone').value.trim()
+  });
+  try {
+    const r = await fetch('/api/order-status?' + q.toString());
+    const d = await r.json();
+    if (!r.ok) { out.textContent = d.error || 'Not found'; return; }
+    out.innerHTML = '';
+    const st = document.createElement('div');
+    st.className = 'st';
+    st.textContent = LABEL[d.status] || d.status;
+    const id = document.createElement('div');
+    id.textContent = 'Order: ' + d.id + ' · Total: ' + d.total_afn + ' AFN';
+    const items = document.createElement('div');
+    items.className = 'items';
+    items.textContent = d.items.map(i => i.title + ' × ' + i.qty).join('; ');
+    out.append(id, st, items);
+  } catch (e) {
+    out.textContent = 'Error: ' + e.message;
+  }
+};
+</script>
+</body>
+</html>
