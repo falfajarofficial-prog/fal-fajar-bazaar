@@ -32,3 +32,22 @@
     console.warn('API load failed; showing built-in demo data.', e);
   }
 })();
+(() => {
+  const clean = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      if (!n.nodeValue || !/sample/i.test(n.nodeValue)) return;
+      n.nodeValue = n.nodeValue
+        .replace(/\s*·?\s*sample count/gi, '')
+        .replace(/\s*·?\s*sample data/gi, '')
+        .replace(/\s*\(sample\)/gi, '')
+        .replace(/^\s*Sample\s*$/, '');
+    });
+  };
+  clean(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) clean(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
