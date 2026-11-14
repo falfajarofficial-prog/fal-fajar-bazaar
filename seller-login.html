@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller login</title>
+</head>
+<body style="font-family:sans-serif;padding:20px;max-width:400px;margin:auto">
+<h2>Seller login</h2>
+<input id="sid" placeholder="Seller ID (e.g. ahmad)" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px">
+<input id="pw" type="password" placeholder="Seller password" style="width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px">
+<button id="go" style="padding:10px 20px;font-size:16px">Login</button>
+<p id="out"></p>
+<script>
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out');
+  out.textContent = '...';
+  try {
+    const r = await fetch('/api/seller-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seller_id: document.getElementById('sid').value.trim(),
+        password: document.getElementById('pw').value
+      })
+    });
+    const d = await r.json();
+    out.textContent = r.ok ? 'Login OK. Seller: ' + d.seller_id : 'Failed: ' + (d.error || r.status);
+  } catch (e) {
+    out.textContent = 'Error: ' + e.message;
+  }
+};
+</script>
+</body>
+</html>
