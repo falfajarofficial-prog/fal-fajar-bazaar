@@ -174,3 +174,14 @@ window.ckPlace = async function () {
   fixBrand();
   new MutationObserver(fixBrand).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const killOld = () => {
+    const svg = document.querySelector('a.logo svg');
+    if (svg && !svg.dataset.hidden) {
+      svg.dataset.hidden = '1';
+      svg.style.display = 'none';
+    }
+  };
+  killOld();
+  new MutationObserver(killOld).observe(document.body, { childList: true, subtree: true });
+})();
