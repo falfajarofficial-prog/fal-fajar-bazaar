@@ -192,7 +192,20 @@ window.ckPlace = async function () {
 
   const redirectSeller = () => {
     if (location.hash.indexOf('#/seller') === 0) {
-      location.replace('/become-seller.html');
+      location.replace('/seller-dashboard.html');
+    }
+  };
+  redirectSeller();
+  window.addEventListener('hashchange', redirectSeller);
+})();
+(() => {
+  const st = document.createElement('style');
+  st.textContent = '#p6Seller{display:none!important}';
+  document.head.appendChild(st);
+
+  const redirectSeller = () => {
+    if (location.hash.indexOf('#/seller') === 0) {
+      location.replace('/seller-dashboard.html');
     }
   };
   redirectSeller();
