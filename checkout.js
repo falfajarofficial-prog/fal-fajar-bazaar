@@ -160,3 +160,17 @@ window.ckPlace = async function () {
   swapLogo();
   new MutationObserver(swapLogo).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const fixBrand = () => {
+    const w = document.querySelector('.logo-word');
+    if (w && w.innerHTML.indexOf('Bazaar') === -1) {
+      w.innerHTML = 'Fal-Fajar <em>Bazaar</em>';
+    }
+    const s = document.querySelector('.logo-sub');
+    if (s && s.textContent.indexOf('?') !== -1) {
+      s.textContent = 'National marketplace · Afghanistan';
+    }
+  };
+  fixBrand();
+  new MutationObserver(fixBrand).observe(document.body, { childList: true, subtree: true });
+})();
