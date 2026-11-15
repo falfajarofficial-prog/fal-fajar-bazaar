@@ -144,3 +144,19 @@ window.ckPlace = async function () {
     m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
   )).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const swapLogo = () => {
+    const a = document.querySelector('a.logo');
+    if (!a || a.dataset.logoSet) return;
+    const svg = a.querySelector('svg');
+    if (!svg) return;
+    const img = document.createElement('img');
+    img.src = '/logo.png';
+    img.alt = 'Fal-Fajar Bazar';
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:8px';
+    svg.replaceWith(img);
+    a.dataset.logoSet = '1';
+  };
+  swapLogo();
+  new MutationObserver(swapLogo).observe(document.body, { childList: true, subtree: true });
+})();
