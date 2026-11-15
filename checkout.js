@@ -185,3 +185,16 @@ window.ckPlace = async function () {
   killOld();
   new MutationObserver(killOld).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const st = document.createElement('style');
+  st.textContent = '#p6Seller{display:none!important}';
+  document.head.appendChild(st);
+
+  const redirectSeller = () => {
+    if (location.hash.indexOf('#/seller') === 0) {
+      location.replace('/become-seller.html');
+    }
+  };
+  redirectSeller();
+  window.addEventListener('hashchange', redirectSeller);
+})();
