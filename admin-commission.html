@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Commission</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937}
+.box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+input{width:100%;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:8px}
+button{padding:8px 12px;font-size:14px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
+button.gray{background:#6b7280}
+.row{border-bottom:1px solid #e5e7eb;padding:8px 0}
+.tot{font-weight:bold;font-size:17px}
+</style>
+</head>
+<body>
+<h2>Commission summary</h2>
+
+<div id="login" class="box" style="display:none">
+  <input id="pw" type="password" placeholder="Admin password">
+  <button id="go">Login</button>
+  <div id="lmsg"></div>
+</div>
+
+<div id="panel" style="display:none">
+  <div class="box">
+    <button id="reload">Reload</button>
+    <button id="logout" class="gray">Logout</button>
+  </div>
+  <div class="box" id="totals"></div>
+  <div class="box" id="list"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SK = 'ffb_admin_token';
+let token = sessionStorage.getItem(SK) || '';
+
+function showLogin(m) {
+  $('login').style.display = 'block';
+  $('panel').style.display = 'none';
+  $('lmsg').textContent = m || '';
+}
+function showPanel() {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  load();
+}
+
+$('go').onclick = async () => {
+  $('lmsg').textContent = '...';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: $('pw').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    token = d.token;
+    sessionStorage.setItem(SK, token);
+    $('pw').value = '';
+    showPanel();
+  } catch (e) {
+    $('lmsg').textContent = 'Failed: ' + e.message;
+  }
+};
+
+$('logout').onclick = () => { token = ''; sessionStorage.removeItem(SK); showLogin('Logged out.'); };
+$('reload').onclick = () => load();
+
+async function load() {
+  $('list').textContent = 'Loading...';
+  try {
+    const r = await fetch('/api/admin-commission', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) {
+      token = ''; sessionStorage.removeItem(SK);
+      showLogin('Session expired. Login again.');
+      return;
+    }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+
+    $('totals').innerHTML = '';
+    const t = d.totals;
+    const tl = document.createElement('div');
+    tl.className = 'tot';
+    tl.textContent = 'Total sales: ' + t.sales_afn + ' AFN · Your commission: ' + t.commission_afn + ' AFN';
+    const tl2 = document.createElement('div');
+    tl2.textContent = 'Payable to sellers: ' + t.payable_to_seller_afn + ' AFN';
+    $('totals').append(tl, tl2);
+
+    if (!d.sellers.length) { $('list').textContent = 'No sales yet.'; return; }
+    $('list').innerHTML = '';
+    d.sellers.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const n = document.createElement('b');
+      n.textContent = s.seller_name || s.seller_id;
+      const info = document.createElement('div');
+      info.textContent = 'Orders: ' + s.orders + ' · Sales: ' + s.sales_afn + ' AFN';
+      const c = document.createElement('div');
+      c.textContent = 'Your commission: ' + s.commission_afn + ' AFN · Pay seller: ' + s.payable_to_seller_afn + ' AFN';
+      row.append(n, info, c);
+      $('list').appendChild(row);
+    });
+  } catch (e) {
+    $('list').textContent = 'Error: ' + e.message;
+  }
+}
+
+if (token) showPanel(); else showLogin('');
+</script>
+</body>
+</html>
