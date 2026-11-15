@@ -1,3 +1,5 @@
+import { isLocked, recordFail, clearFail, tooMany } from '../lib/limit.js';
+
 const enc = new TextEncoder();
 
 async function sign(data, secret) {
@@ -17,14 +19,18 @@ function safeEqual(a, b) {
 }
 
 export async function onRequestPost({ request, env }) {
+  if (await isLocked(request, env)) return tooMany();
+
   const body = await request.json().catch(() => ({}));
   const password = String(body.password || '');
 
   if (!env.ADMIN_PASSWORD || !env.SESSION_SECRET || !safeEqual(password, env.ADMIN_PASSWORD)) {
+    await recordFail(request, env);
     return Response.json({ error: 'Invalid password' }, { status: 401 });
   }
 
+  await clearFail(request, env);
   const payload = btoa(JSON.stringify({ role: 'admin', exp: Date.now() + 12 * 60 * 60 * 1000 }));
   const sig = await sign(payload, env.SESSION_SECRET);
   return Response.json({ token: payload + '.' + sig });
-                                  }
+}
