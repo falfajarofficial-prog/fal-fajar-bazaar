@@ -211,3 +211,17 @@ window.ckPlace = async function () {
   redirectSeller();
   window.addEventListener('hashchange', redirectSeller);
 })();
+(() => {
+  const fixMenu = root => {
+    root.querySelectorAll && root.querySelectorAll('a').forEach(a => {
+      if (a.textContent.indexOf('Seller Dashboard (Demo)') !== -1) {
+        a.textContent = 'Seller login';
+        a.setAttribute('href', '/seller-dashboard.html');
+      }
+    });
+  };
+  fixMenu(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) fixMenu(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
