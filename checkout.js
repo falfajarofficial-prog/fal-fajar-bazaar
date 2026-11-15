@@ -99,3 +99,25 @@ window.ckPlace = async function () {
     }
   }, true);
 })();
+(() => {
+  const map = [
+    [/Sample contact \(demo\)/g, 'Phone: 0700 000 000 · Email: info@example.com'],
+    [/Sample contact/g, 'Contact us']
+  ];
+  const fix = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      const v0 = n.nodeValue;
+      if (!v0 || v0.indexOf('Sample contact') === -1) return;
+      let v = v0;
+      map.forEach(([re, to]) => { v = v.replace(re, to); });
+      if (v !== v0) n.nodeValue = v;
+    });
+  };
+  fix(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
