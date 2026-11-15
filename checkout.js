@@ -121,3 +121,26 @@ window.ckPlace = async function () {
     m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
   )).observe(document.body, { childList: true, subtree: true });
 })();
+(() => {
+  const hide = [
+    'Prototype homepage',
+    'Admin demo',
+    'Demo only. No real shopping'
+  ];
+  const fix = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (w.nextNode()) nodes.push(w.currentNode);
+    nodes.forEach(n => {
+      const v = n.nodeValue || '';
+      if (hide.some(h => v.indexOf(h) !== -1)) {
+        const el = n.parentElement;
+        if (el) el.style.display = 'none';
+      }
+    });
+  };
+  fix(document.body);
+  new MutationObserver(ms => ms.forEach(m =>
+    m.addedNodes.forEach(n => { if (n.nodeType === 1) fix(n); })
+  )).observe(document.body, { childList: true, subtree: true });
+})();
