@@ -2,6 +2,41 @@ const DELIVERY_FEE = 150;
 
 const fail = (msg, status = 400) => Response.json({ error: msg }, { status });
 
+async function notifyOrder(env, order) {
+  if (!env.RESEND_KEY || !env.ORDER_EMAIL) return;
+  const lines = order.items.map(i => `${i.title} × ${i.qty} (${i.price_afn} AFN)`).join('\n');
+  const text = [
+    `New order: ${order.id}`,
+    `Total: ${order.total_afn} AFN (includes ${DELIVERY_FEE} AFN delivery)`,
+    '',
+    `Customer: ${order.name}`,
+    `Phone: ${order.phone}`,
+    `City: ${order.city}`,
+    `Address: ${order.address}`,
+    '',
+    'Items:',
+    lines
+  ].join('\n');
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + env.RESEND_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Fal-Fajar Bazar <onboarding@resend.dev>',
+        to: [env.ORDER_EMAIL],
+        subject: 'New order ' + order.id,
+        text
+      })
+    });
+  } catch (e) {
+    // ای میل ناکام ہو تو آرڈر پھر بھی محفوظ رہتا ہے
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   const b = await request.json().catch(() => null);
   if (!b || !Array.isArray(b.items) || b.items.length === 0 || b.items.length > 30) {
@@ -57,5 +92,11 @@ export async function onRequestPost({ request, env }) {
   }
 
   await env.DB.batch(stmts);
+
+  await notifyOrder(env, {
+    id: orderId, name, phone, city, address, total_afn: total,
+    items: lines.map(l => ({ title: l.p.title, qty: l.qty, price_afn: l.p.price_afn }))
+  });
+
   return Response.json({ ok: true, order_id: orderId, total_afn: total }, { status: 201 });
 }
