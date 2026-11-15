@@ -7,11 +7,11 @@
 <style>
 body{font-family:sans-serif;margin:0;padding:16px;background:#f5f7fa;color:#1f2937}
 .box{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-input,select{padding:8px;font-size:15px;box-sizing:border-box}
-#pw{width:100%;margin-bottom:8px}
+.new{border:2px solid #f59e0b;background:#fffbeb}
+.banner{background:#f59e0b;color:#fff;font-weight:bold;padding:12px;border-radius:8px;margin-bottom:12px;display:none}
+input{padding:8px;font-size:16px;box-sizing:border-box;width:100%;margin-bottom:8px}
 button{padding:8px 12px;font-size:14px;margin-top:6px;border:0;border-radius:6px;background:#1e3a5f;color:#fff;cursor:pointer}
 button.gray{background:#6b7280}
-.row{border-bottom:1px solid #e5e7eb;padding:10px 0}
 .items{font-size:14px;color:#4b5563;margin:4px 0}
 .st{font-size:12px;padding:2px 6px;border-radius:4px;background:#e5e7eb}
 </style>
@@ -25,31 +25,46 @@ button.gray{background:#6b7280}
   <div id="lmsg"></div>
 </div>
 
-<div id="panel" class="box" style="display:none">
-  <button id="reload">Reload</button>
-  <button id="logout" class="gray">Logout</button>
-  <div id="msg"></div>
+<div id="panel" style="display:none">
+  <div id="banner" class="banner"></div>
+  <div class="box">
+    <button id="reload">Reload</button>
+    <button id="logout" class="gray">Logout</button>
+    <div id="msg"></div>
+  </div>
+  <div id="list"></div>
 </div>
-
-<div id="list"></div>
 
 <script>
 const $ = id => document.getElementById(id);
 const SK = 'ffb_admin_token';
 const STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+const BASE_TITLE = 'Orders';
 let token = sessionStorage.getItem(SK) || '';
+let timer = null;
 
 function showLogin(msg) {
   $('login').style.display = 'block';
   $('panel').style.display = 'none';
   $('list').innerHTML = '';
   $('lmsg').textContent = msg || '';
+  stopAuto();
 }
 
 function showPanel() {
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
   loadOrders();
+  startAuto();
+}
+
+function startAuto() {
+  stopAuto();
+  timer = setInterval(() => { if (token) loadOrders(); }, 60000);
+}
+function stopAuto() {
+  if (timer) clearInterval(timer);
+  timer = null;
 }
 
 async function api(path, opts = {}) {
@@ -105,14 +120,21 @@ async function setStatus(id, status) {
 }
 
 async function loadOrders() {
-  $('list').textContent = 'Loading...';
   try {
     const orders = await api('/api/admin-orders');
+    const newCount = orders.filter(o => o.status === 'pending').length;
+
+    $('banner').style.display = newCount ? 'block' : 'none';
+    $('banner').textContent = newCount + ' new order' + (newCount === 1 ? '' : 's') + ' waiting';
+    document.title = newCount ? '(' + newCount + ') ' + BASE_TITLE : BASE_TITLE;
+
+    orders.sort((a, b) => (b.status === 'pending') - (a.status === 'pending'));
+
     if (!orders.length) { $('list').textContent = 'No orders yet.'; return; }
     $('list').innerHTML = '';
     orders.forEach(o => {
       const row = document.createElement('div');
-      row.className = 'box';
+      row.className = 'box' + (o.status === 'pending' ? ' new' : '');
 
       const head = document.createElement('b');
       head.textContent = o.id + ' · ' + o.total_afn + ' AFN';
